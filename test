@@ -1,0 +1,80 @@
+/*create a Process Id (PID) manager that keeps track of free PIDs and ensures
+that no two active processes are having the same pid. Once a process terminates
+the PID manager may assigns its pid to new process.
+Use the following constants to identify the range of possible pid values:
+#define MIN PID 100
+#define MAX PID 1000
+You may use any data structure of your choice to represent the availability
+of process identifiers. One strategy is to adopt what Linux has done and use
+a bitmap in which a value of 0 at position i indicates that a process id of
+value i is available and a value of 1 indicates that the process id is currently in use.
+Implement the following API for obtaining and releasing a pid:
+• int allocate map(void)—Creates and initializes a data structure for representing pids;
+returns—1 if unsuccessful, 1 if successful
+• int allocate pid(void)—Allocates and returns a pid; returns— 1 if unable to allocate 
+a pid (all pids are in use)
+• void release pid(int pid)—Releases a pid 
+Modify the above problem by writing a multithreaded program that tests your solution. 
+You will create a number of threads—for example, 100—and each thread will request a pid,
+sleep for a random period of time, and then release the pid. (Sleeping for a
+random period of time approximates the typical pid usage in which a pid is assigned
+to a new process, the process executes and then terminates,
+and the pid is released on the process’s termination.)*/
+#include<stdio.h>
+#include<stdlib.h>
+#include<time.h>
+#include<unistd.h>
+#include<pthread.h>
+#include<sys/wait.h>
+#define MIN_PID 100
+#define MAX_PID 1000
+#define NO_OF_P 16 
+#define ARR_SIZE MAX_PID-MIN_PID+1
+int pid_status[ARR_SIZE]={0};
+int allocate_pid(void){
+    int k,flag=1;
+    for(k=0; k<ARR_SIZE; k++)
+    {
+        if(pid_status[k]==0)
+        {
+	          pid_status[k]=1;
+            flag=0;
+            break;
+        }
+    }
+    return flag?-1:k;
+}
+void release_pid(int ide){
+    pid_status[ide]=0;
+}
+void *threadRoutine(void *arg)
+{
+    int threadid =  *(( int* )arg);
+    int ide = allocate_pid();
+    if(ide==-1)
+    {
+        puts("No PID available.");
+    }
+    else{
+        printf("Thread [%3d] PID [%3d] Allocated\n",threadid,ide+MIN_PID);
+
+	int r=1+rand()%30;
+	release_pid(ide);
+        printf("Thread [%3d] PID [%3d] Released after %d sec\n",threadid,ide+MIN_PID,r);
+        
+    }
+    pthread_exit(NULL);
+}
+int main(){
+    int k;
+    pthread_t process[NO_OF_P];
+    srand(time(NULL));
+    for(k=0; k<NO_OF_P; k++){
+        if(pthread_create(&process[k],NULL,threadRoutine,(void*)&k))
+            return -1*printf("Error in thread %d creation!!!\n",k);    
+    }
+
+    for(k=0; k<NO_OF_P; k++)
+        pthread_join(process[k],NULL);
+    return 0*printf("\nexitsucessfully\n");
+}
